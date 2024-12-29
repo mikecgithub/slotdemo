@@ -3,6 +3,7 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <vector>
 
 using std::cout;
 using std::endl;
@@ -10,28 +11,39 @@ using std::string;
 
 using namespace libxl;
 
-enum class Symbols
-{
-
-};
-
-
 struct Loader
 {
-	explicit Loader(string);
+    explicit Loader(string);
 
-	protected:
+    protected:
 
-	void loadSymbols(Sheet *sheet, int, int);
+	void loadPays(Sheet *, int, int);
 
-// map of short-name, desc, like <BAR, "Single bar">
-	std::map<string,string> m_symbols;
+	void loadPaylines(Sheet *, int, int);
+
+    void loadSymbols(Sheet *, int, int);
+
+    void loadReels(Sheet *, int, int);
+
+	// 2D string rep of reels, i.e. { SEV, BAR, CHR }
+	std::vector<std::vector<string>> m_reels_str;
+
+	// 2D numeric rep of reels, i.e. { 3, 8, 1 }
+	std::vector<std::vector<int>> m_reels;
+
+	// map of short-name, desc, like <BAR, "Single bar">
+    std::map<string,string> m_symbols;
+
+	// map of payline number -> shape, like { 1, {-1,0,1}}
+	std::map<int, std::vector<int>> m_paylines;
+
+	// 2D list of payout schedule, i.e. { BAR, BAR, BAR, 30}
+	std::vector<std::vector<string>> m_payout_str;
 };
 
 int main() 
 {
-
-	Loader loader("./parsheet.xlsx");
+    Loader loader("./parsheet.xlsx");
 
     cout << "done" << endl;
     return 0;
@@ -48,15 +60,21 @@ Loader::Loader(string fname)
         {
             for(int i =0 ;i < 100; ++ i)
             {
-                for(int j = 0; j < 100; ++ j)
+                for(int j = 0; j < 200; ++ j)
                 {
                     char const * text = sheet->readStr(i,j);
                     if(nullptr != text)
                     {
                         auto cellText {std::string(text) };
-                        //cout << "Text: " << (text) << endl;
+                        //cout << "Text: " << (text) << "|"<<endl;
                         if("Symbols:" == cellText)
                             loadSymbols(sheet, i,j);
+						else if("Reels:" == cellText)
+                            loadReels(sheet,i,j);
+						else if("Pay Schedule:" == cellText)
+                            loadPays(sheet,i+2,j);
+						else if("Paylines:" == cellText)
+                            loadPaylines(sheet,i+2,j);
                     }
                 }
             }
@@ -66,13 +84,153 @@ Loader::Loader(string fname)
 } 
 
 
+void Loader::loadPaylines(Sheet *sheet, int row, int col)
+{
+    cout << "Loading Paylines: " << endl;
+
+	// assumes a 3-reel machine, although generalization is possible
+	string reel_window[3][3];
+
+    for(int reel = 0; reel < 3; ++ reel)
+    {
+		for(int j = 0; j < 3; ++ j)
+		{
+			auto text = sheet->readStr(row+j, col+reel);
+			if(nullptr != text)
+				reel_window[reel][j] = text;
+			else
+				throw std::invalid_argument("Paylines must be 3x3 integers");
+		}
+    }
+
+	// helper function
+	auto contains = [](string const &heystack, int needle) -> bool {
+		bool ret = (needle < 10);
+		ret &= (string::npos != heystack.find(char(needle + '0')));
+		return ret;
+	};
+
+	// paylines are written graphically in excel, concatenated 
+	// digit-wise with other payline geometries. they must start
+	// at 1 and increment sequentially. e.g.
+	// 1  X  X
+	// X  1  X
+	// X  X  1
+	//
+	// 1  X   X
+	// 2  21  2
+	// X  X   1
+	//
+	// decode up to 9 paylines. this could be extended to 35 if you used
+	// letters + numbers, 61 if CAPS letters
+	for(int pay_idx = 1; pay_idx < 10; ++pay_idx)
+	{
+		std::vector<int> pl(3,0);
+
+		int found = 0;
+
+		//  find this payline's position in the window
+		//  relative to the centerline
+		for(int reel=0; reel <3; ++reel)
+		{
+			for(int pos=0; pos <3; ++pos)
+			{
+				if(contains(reel_window[reel][pos],pay_idx))
+				{
+					pl[reel] = pos -1;
+					++ found;
+					break;
+				}
+			}
+		}
+
+		if(3 == found)
+		{
+			m_paylines[pay_idx] = pl;
+
+			cout << "pl " <<  pay_idx << "> " ;
+			for(int j = 0; j < 3; ++j )
+				cout << pl[j] << " " ;
+			cout << endl;
+		}
+		else
+		{
+			if(0 == found)
+				break;
+			else
+				throw std::invalid_argument("Invalid Payline definition: " + std::to_string(pay_idx));
+		}
+	}
+}
+
+void Loader::loadPays(Sheet *sheet, int row, int col)
+{
+    cout << "Loading Pays: " << endl;
+
+	std::vector<string> payline(4,"");
+
+    for(int i = 0; i < 1000; ++ i)
+    {
+        auto text = sheet->readStr(row+i, col);
+        if(nullptr != text)
+        {
+			// record the 3 syms + payout (as string)
+			for(int j = 0; j < 3; ++ j)
+			{
+				payline[j] = text;
+				text = sheet->readStr(row+i, col+1+j);
+				if(nullptr == text)
+					throw std::invalid_argument("Payout Schedule must have 4 entries");
+			}
+			// the payout amount (as string)
+			payline[3] = text;
+
+			m_payout_str.push_back(payline);
+        }
+        else if (nullptr == sheet->readStr(row+i+1,col))
+        {
+            // quit after two successive blank rows
+            break;
+        }
+    }
+}
+
+void Loader::loadReels(Sheet *sheet, int row, int col)
+{
+    cout << "Loading reels: " << endl;
+
+	// right now, hard-coded to 3 reels, can easily be generalized
+	for(int reel = 0; reel < 3; ++ reel)
+	{
+		std::vector<string> reel_text;
+		for(int i = 2; i < 90; ++ i)
+		{
+			auto text = sheet->readStr(row+i, col + reel);
+			if(nullptr != text)
+			{
+				string label = text;
+				reel_text.push_back(label);
+
+				// always add a blank
+				reel_text.push_back("BL");
+			}
+			else
+			{
+				// cancel after this section is read
+				break;
+			}
+		}
+		m_reels_str.emplace_back(std::move(reel_text));
+	}
+}
+
 void Loader::loadSymbols(Sheet *sheet, int row, int col)
 {
     cout << "Loading symbols: " << endl;
 
     for(int i = 2; i < 20; ++ i)
     {
-        char const * text = sheet->readStr(row+i, col);
+        auto text = sheet->readStr(row+i, col);
         if(nullptr != text)
         {
             string label = text;
@@ -81,13 +239,13 @@ void Loader::loadSymbols(Sheet *sheet, int row, int col)
                 throw std::invalid_argument("Symbol " + label + " must have short alias in next column.");
             string sym = text;
 
-            cout << "Sym: " << label << " / " << sym << endl;
+            // cout << "Sym: " << label << " / " << sym << endl;
         }
-		else
-		{
-			// cancel after this section is read
-			break;
-		}
+        else
+        {
+            // cancel after this section is read
+            break;
+        }
     }
 
 }
