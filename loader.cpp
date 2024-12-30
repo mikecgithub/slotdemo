@@ -1,7 +1,3 @@
-
-
-
-
 #include "loader.h"
 
 #include "libxl.h"
@@ -71,9 +67,15 @@ bool Loader::load()
 	for(auto const & sym : m_symbols)
 		symbols.push_back(sym.first);
 
+	// converts string BAR_2X to int, e.g. 2
+	auto encode = [&symbols](auto const &sym) -> int {
+		return (int)std::distance(symbols.begin(), 
+			std::find(symbols.begin(), symbols.end(), sym));
+	};
+
 	for(auto const & reel : m_reels_str)
 	{
-		std::vector<int> reel_int(40);
+		std::vector<int> reel_int;
 		for(auto const & sym : reel)
 		{
 			auto len = std::distance(symbols.begin(), 
@@ -83,6 +85,15 @@ bool Loader::load()
 			reel_int.push_back(len);
 		}
 		m_reels.emplace_back(reel_int);
+	}
+
+	for(auto const & pay : m_payout_str)
+	{
+		auto win{ std::stoi(pay[3]) };
+
+		std::vector<int> syms{ encode(pay[0]), encode(pay[1]), encode(pay[2]) };
+
+		m_pays[win] = syms;
 	}
 
     return true;
@@ -174,7 +185,7 @@ void Loader::loadPaylines(Sheet *sheet, int row, int col)
             {
                 if(contains(reel_window[reel][pos],pay_idx))
                 {
-                    pl[reel] = pos -1;
+                    pl[reel] = pos;
                     ++ found;
                     break;
                 }

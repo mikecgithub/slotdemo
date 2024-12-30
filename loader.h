@@ -15,8 +15,8 @@ using ReelSet = std::vector<std::vector<int>>;
 
 using PaySchedule = std::map<int, std::vector<int>>;
 
-int constexpr NUM_REELS = 3;
-
+// Loader reads in the symbols, reels, and pays
+// from an Excel spreadsheet using libxl 
 class Loader
 {
 public:
@@ -28,8 +28,20 @@ public:
 
     bool load();
 
-	ReelSet getReels() {
+	ReelSet getReels() const {
 		return m_reels;
+	}
+
+	std::map<string,string> getSymbols() const {
+		return m_symbols;
+	}
+
+	PaySchedule getPaylines() const {
+		return m_paylines;
+	}
+
+	std::map<int, std::vector<int>> getPays() const {
+		return m_pays;
 	}
 
 protected:
@@ -56,5 +68,8 @@ protected:
 
     // 2D list of payout schedule, i.e. { BAR, BAR, BAR, 30}
     std::vector<std::vector<string>> m_payout_str;
+
+    // Same as above, but map<int award, symbols> i.e. <30, { BAR, BAR, BAR, 30}>
+	std::map<int, std::vector<int>> m_pays;
 };
 
