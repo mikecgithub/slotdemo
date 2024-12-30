@@ -8,7 +8,6 @@
 
 #include <algorithm>
 #include <iostream>
-#include <map>
 #include <string>
 #include <vector>
 
@@ -121,7 +120,6 @@ Loader::Loader(string fname)
         book->release();
     } 
 } 
-
 
 void Loader::loadPaylines(Sheet *sheet, int row, int col)
 {
@@ -287,5 +285,4 @@ void Loader::loadSymbols(Sheet *sheet, int row, int col)
             break;
         }
     }
-
 }

@@ -11,6 +11,12 @@ using std::string;
 
 using namespace libxl;
 
+using ReelSet = std::vector<std::vector<int>>;
+
+using PaySchedule = std::map<int, std::vector<int>>;
+
+int constexpr NUM_REELS = 3;
+
 class Loader
 {
 public:
@@ -21,6 +27,10 @@ public:
     bool validate() const;
 
     bool load();
+
+	ReelSet getReels() {
+		return m_reels;
+	}
 
 protected:
 
@@ -36,13 +46,13 @@ protected:
     std::vector<std::vector<string>> m_reels_str;
 
     // 2D numeric rep of reels, i.e. { 3, 8, 1 }
-    std::vector<std::vector<int>> m_reels;
+	ReelSet	m_reels;
 
     // map of short-name, desc, like <BAR, "Single bar">
     std::map<string,string> m_symbols;
 
     // map of payline number -> shape, like { 1, {-1,0,1}}
-    std::map<int, std::vector<int>> m_paylines;
+    PaySchedule m_paylines;
 
     // 2D list of payout schedule, i.e. { BAR, BAR, BAR, 30}
     std::vector<std::vector<string>> m_payout_str;
