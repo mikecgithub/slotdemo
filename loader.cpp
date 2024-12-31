@@ -27,7 +27,7 @@ bool Loader::validate() const
     {
         for(auto const & sym : reel)
         {
-            if(m_symbols.end() == m_symbols.find(sym))
+            if(m_symbols.end() == std::find(m_symbols.begin(), m_symbols.end(), sym))
             {
                 cout << "Error: reel sym " << sym << " not found in symbols list" << endl;
                 ret = false;
@@ -41,7 +41,7 @@ bool Loader::validate() const
 		int count = 0; // only care about first 3 syms
         for(auto const &sym : payout)
         {
-            if(m_symbols.end() == m_symbols.find(sym) && count < 3)
+            if(m_symbols.end() == std::find(m_symbols.begin(), m_symbols.end(), sym) && count < 3)
             {
                 cout << "Error: payout sym " << sym << " not found in symbols list" << endl;
                 ret = false;
@@ -61,39 +61,42 @@ bool Loader::validate() const
 // convert strings to enumerated symbols, ready to be evaluated
 bool Loader::load()
 {
-	// a vector of just the symbols (without descriptions)
-	std::vector<string> symbols;
-
-	for(auto const & sym : m_symbols)
-		symbols.push_back(sym.first);
-
 	// converts string BAR_2X to int, e.g. 2
-	auto encode = [&symbols](auto const &sym) -> int {
-		return (int)std::distance(symbols.begin(), 
-			std::find(symbols.begin(), symbols.end(), sym));
+	auto encode = [this](auto const &sym) -> int {
+		return (int)std::distance(m_symbols.begin(), 
+			std::find(m_symbols.begin(), m_symbols.end(), sym));
 	};
 
+	int c = 0;
 	for(auto const & reel : m_reels_str)
 	{
 		std::vector<int> reel_int;
+		//cout << "Reel: " << c << endl;
+		++ c;
 		for(auto const & sym : reel)
 		{
-			auto len = std::distance(symbols.begin(), 
-				std::find(symbols.begin(), symbols.end(), sym));
-
-			// cout << "len = " << len << endl;
-			reel_int.push_back(len);
+			auto num = encode(sym);
+			//cout << "mapping " << sym << " to " << num << endl;
+			reel_int.push_back(num);
+			if(num > 9)
+			{
+				cout << "--- Loader Error: reel > 9: " << num << " / " << sym << endl;
+				throw 0;
+			}
 		}
+		cout << endl;
 		m_reels.emplace_back(reel_int);
 	}
 
 	for(auto const & pay : m_payout_str)
 	{
-		auto win{ std::stoi(pay[3]) };
+		WinTuple win;
 
-		std::vector<int> syms{ encode(pay[0]), encode(pay[1]), encode(pay[2]) };
+		win.win = std::stoi(pay[3]);
 
-		m_pays[win] = syms;
+		win.symbols = { encode(pay[0]), encode(pay[1]), encode(pay[2]) };
+
+		m_pays.push_back(win);
 	}
 
     return true;
@@ -241,6 +244,8 @@ void Loader::loadPays(Sheet *sheet, int row, int col)
             break;
         }
     }
+
+	cout << "Total pays: " << m_payout_str.size() << endl;
 }
 
 void Loader::loadReels(Sheet *sheet, int row, int col)
@@ -251,14 +256,14 @@ void Loader::loadReels(Sheet *sheet, int row, int col)
     for(int reel = 0; reel < 3; ++ reel)
     {
         std::vector<string> reel_text;
-        for(int i = 2; i < 90; ++ i)
+        for(int i = 2; i < 40; ++ i)
         {
             auto text = sheet->readStr(row+i, col + reel);
             if(nullptr != text)
             {
                 string label = text;
                 reel_text.push_back(label);
-
+				//cout << "lbl = " << label << endl;
                 // always add a blank
                 reel_text.push_back("BL");
             }
@@ -287,8 +292,8 @@ void Loader::loadSymbols(Sheet *sheet, int row, int col)
                 throw std::invalid_argument("Symbol " + label + " must have short alias in next column.");
             string sym = text;
 
-			m_symbols[sym] = label;
-            //cout << "Sym: " << label << " / " << sym << endl;
+			m_symbols.push_back(sym);
+            cout << "Sym: " << label << " / " << sym << endl;
         }
         else
         {
