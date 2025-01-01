@@ -23,15 +23,16 @@ Evaluator::Evaluator(Loader const &loader)
     for(auto const & payline : loader.getPaylines())
         m_paylines.push_back(payline.second);
 
-    // load up prime numbers
-    m_primes[0] = 2;  m_primes[1] = 3;
-    m_primes[2] = 5;  m_primes[3] = 7;
-    m_primes[4] = 13; m_primes[5] = 17;
-    m_primes[6] = 19; m_primes[7] = 23;
-    m_primes[8] = 29; m_primes[9] = 31;
-    m_primes[10] = 37; m_primes[11] = 41;
-    m_primes[12] = 43; m_primes[13] = 47;
-    m_primes[14] = 53; m_primes[15] = 59;
+    // load up prime numbers (one isn't prime,
+    // but we take advantage of that later)
+    m_primes[0] = 1;  m_primes[1] = 2;
+    m_primes[2] = 3;  m_primes[3] = 5;
+    m_primes[4] = 7; m_primes[5] = 13;
+    m_primes[6] = 17; m_primes[7] = 19;
+    m_primes[8] = 23; m_primes[9] = 29;
+    m_primes[10] = 31; m_primes[11] = 37;
+    m_primes[12] = 41; m_primes[13] = 43;
+    m_primes[14] = 47; m_primes[15] = 53;
 
     // create a hash for the win based on the product of 
     // 3 primes. This guarantees the key will always be unique
@@ -39,8 +40,33 @@ Evaluator::Evaluator(Loader const &loader)
     {
         int product = 1;
         for(auto p2 : pay.symbols)
-            product *= m_primes[p2];
-        m_pay_lookup[product] = pay.win;
+        {
+            //handle the ANY symbol
+            if(1 == p2)
+            {
+                // for an ANY, add a win for every other permutation
+                // of the other symbols
+                for(int i = 2; i < m_symbols.size(); ++ i)
+                {
+                    for(auto p3 : pay.symbols)
+                    {
+                        //cout << "adding pay: " << i << " " << p3 << endl;
+                        //cout << "composite: " << m_primes[i] * m_primes[p3] << endl;
+                        //cout << "win: " << pay.win << endl;
+                        m_pay_lookup[m_primes[i] * m_primes[p3]] = pay.win;
+                    }
+                }
+                // signal to prevent double-add
+                product = 1;
+                break;
+            }
+            else
+            {
+                product *= m_primes[p2];
+            }
+        }
+        if(1 != product)
+            m_pay_lookup[product] = pay.win;
     }
 }
 
