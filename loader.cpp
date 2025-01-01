@@ -195,6 +195,8 @@ void Loader::loadPaylines(Sheet *sheet, int row, int col)
             }
         }
 
+		cout << "pl: " << pl[0] << " " << pl[1] << " " << pl[2] << endl;
+
         if(3 == found)
         {
             m_paylines[pay_idx] = pl;

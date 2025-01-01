@@ -42,20 +42,11 @@ ReelWindow Reels::spin()
     auto r2 = m_rng[2](m_gen);
 
 	if(r0 > r0_size)
-	{
-		cout << "r0 : " << r0 << endl;
 		throw 0;
-	}
 	if(r1 > r1_size)
-	{
-		cout << "r1 : " << r1 << endl;
 		throw 0;
-	}
 	if(r2 > r2_size)
-	{
-		cout << "r2 : " << r2 << endl;
 		throw 0;
-	}
 
 	// m_window indices :
 	// 0 1 2
@@ -77,18 +68,6 @@ ReelWindow Reels::spin()
 	m_window[2] = m_reels[2][r2 + 0];
 	m_window[5] = m_reels[2][r2 + 1];
 	m_window[8] = m_reels[2][r2 + 2];
-
-	for(int i=0;i < 9; ++i)
-	{
-		if(m_window[i] > 9)
-		{
-			cout << "Error: reel > 9: " << r2 << " - " << i << " - " << m_window[i] << endl;
-
-			cout << "r0 : " << r0 << " " << r0_size << endl;
-			cout << "r1 : " << r1 << " " << r1_size << endl;
-			cout << "r2 : " << r2 << " " << r2_size << endl;
-		}
-	}
 
     return m_window;
 }

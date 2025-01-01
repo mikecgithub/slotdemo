@@ -41,7 +41,7 @@ int main()
 
     cout << "coinIn = " << coinIn << endl;
     cout << "coinOut = " << coinOut << endl;
-    cout << "Percentage: " << std::setprecision(3) << 100.f * (double(coinIn - coinOut)/double(coinIn)) << "% " << endl;
+    cout << "RTP: " << std::setprecision(3) << 100.f - 100.f * (double(coinIn - coinOut)/double(coinIn)) << "% " << endl;
 
     return 0;
 }

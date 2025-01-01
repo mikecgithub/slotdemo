@@ -58,7 +58,6 @@ Evaluator::Evaluator(Loader const &loader)
                 }
                 // signal to prevent double-add
                 product = 1;
-                break;
             }
             else
             {
@@ -74,16 +73,17 @@ ResultSet Evaluator::evaluate(ReelWindow const &win)
 {
     ResultSet rs;
 
-    // optimization: a lookup table that
-    // converts from (reel, line index) => window idx
-    static const int xlat[][3] =
-    {
-        { 0, 1, 2 },
-        { 3, 4, 5 },
-        { 6, 7, 8 }
-    };
-
     cout << "------------------------------------" << endl;
+    cout << "Sym: " << endl;;
+    for(int i = 0; i < 9; ++i)
+    {
+        auto const & sym{ m_symbols[win[i]] };
+        cout << sym << "   ";
+        if(i==2 || i==5)
+            cout << endl;
+    }
+    cout << endl;
+    cout << endl;
 
     using std::setw;
     for(int i = 0; i < 3; ++i)
@@ -91,12 +91,20 @@ ResultSet Evaluator::evaluate(ReelWindow const &win)
         int consumed = 0;
         for(int j = 0; j < 3; ++j)
         {
-            auto whichsym { win[xlat[i][j]]};
+            auto whichsym { win[3*i +j] };
             auto const & sym{ m_symbols[whichsym] };
             cout << sym << "   ";
         }
         cout << endl;
     }
+
+    // allows the reel window to be accessed as a 2D array
+    static const int xlat[3][3] =
+    {
+        { 0, 1, 2 },
+        { 3, 4, 5 },
+        { 6, 7, 8 }
+    };
 
     // shorthand alias
     auto pr = m_primes;
@@ -107,19 +115,22 @@ ResultSet Evaluator::evaluate(ReelWindow const &win)
     // the reel window + line
     for(auto & line : m_paylines)
     {
-        // compute a product from the 3 symbols
-        int product = pr[win[xlat[0][line[0]]]];
-        product *= pr[win[xlat[1][line[1]]]];
-        product *= pr[win[xlat[2][line[2]]]];
+        auto sym1 = win[xlat[line[0]][0]];
+        auto sym2 = win[xlat[line[1]][1]];
+        auto sym3 = win[xlat[line[2]][2]];
 
+        // compute a product from the 3 symbols
+        int product = pr[sym1] * pr[sym2] * pr[sym3];
+
+        //cout << "payline: " << 
+        //    m_symbols[sym1] << " " << m_symbols[sym2]  << m_symbols[sym3]  << endl;
         if(m_pay_lookup.end() != m_pay_lookup.find(product))
         {
             if(newline)
                 cout << endl;
             newline = false;
             cout << "line: " << npay << ", win: " << m_pay_lookup[product] << ", sym: ";
-           
-           cout << m_symbols[win[xlat[0][line[0]]]] << " " << m_symbols[win[xlat[1][line[1]]]] << " " << m_symbols[win[xlat[2][line[2]]]] << endl;
+            cout <<    m_symbols[sym1] << " " << m_symbols[sym2]  << " " << m_symbols[sym3]  << endl;
         }
         ++npay;
     }
@@ -134,9 +145,8 @@ ResultSet Evaluator::evaluate(ReelWindow const &win)
 
 int Evaluator::evaluateNoPrint(ReelWindow const &win)
 {
-    // optimization: a lookup table that
-    // converts from (reel, line index) => window idx
-    static const int xlat[][3] =
+    // allows the reel window to be accessed as a 2D array
+    static const int xlat[3][3] =
     {
         { 0, 1, 2 },
         { 3, 4, 5 },
@@ -147,10 +157,12 @@ int Evaluator::evaluateNoPrint(ReelWindow const &win)
     auto const pr = m_primes;
     for(auto & line : m_paylines)
     {
-        // compute a product from the 3 symbols
-        int product = pr[win[xlat[0][line[0]]]];
-        product *= pr[win[xlat[1][line[1]]]];
-        product *= pr[win[xlat[2][line[2]]]];
+        auto sym1 = win[xlat[line[0]][0]];
+        auto sym2 = win[xlat[line[1]][1]];
+        auto sym3 = win[xlat[line[2]][2]];
+
+        // compute a unique product from the 3 symbols (mapped to primes)
+        auto product = pr[sym1] * pr[sym2] * pr[sym3];
 
         if(m_pay_lookup.end() != m_pay_lookup.find(product))
         {
