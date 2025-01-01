@@ -74,16 +74,7 @@ ResultSet Evaluator::evaluate(ReelWindow const &win)
     ResultSet rs;
 
     cout << "------------------------------------" << endl;
-    cout << "Sym: " << endl;;
-    for(int i = 0; i < 9; ++i)
-    {
-        auto const & sym{ m_symbols[win[i]] };
-        cout << sym << "   ";
-        if(i==2 || i==5)
-            cout << endl;
-    }
-    cout << endl;
-    cout << endl;
+    cout << "Reel Stops: " << endl;;
 
     using std::setw;
     for(int i = 0; i < 3; ++i)
